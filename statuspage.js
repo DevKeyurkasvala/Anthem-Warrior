@@ -1,8 +1,17 @@
 // commands/statusupdate.js
 let lastMessageId = ''; // Replace 'YOUR_LAST_MESSAGE_ID' with your actual last message ID
-let uptimeStartTime = new Date(); 
 
 const https = require('https');
+const axios = require('axios');
+
+const isApiServerOnline = async (url) => {
+    try {
+        const response = await axios.get(url);
+        return response.status === 200; // Assuming status code 200 indicates the server is running
+    } catch (error) {
+        return false; // Error occurred, assume server is not online
+    }
+};
 
 const isWebsiteOnline = (url) => {
     return new Promise((resolve, reject) => {
@@ -18,13 +27,28 @@ const isWebsiteOnline = (url) => {
     });
 };
 
-const calculateUptime = () => {
+const calculateUptime = (startTime) => {
+    if (!startTime) return 'N/A'; // Return 'N/A' if start time is not defined
     const currentTime = new Date();
-    const uptimeInSeconds = (currentTime - uptimeStartTime) / 1000;
+    const uptimeInSeconds = (currentTime - startTime) / 1000;
     const hours = Math.floor(uptimeInSeconds / 3600);
     const minutes = Math.floor((uptimeInSeconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
 };
+
+const getLocalTime = () => {
+    const currentTimeUTC = new Date();
+    const offsetHours = 5; // GMT offset is 5 hours
+    const offsetMinutes = 30; // Additional minutes offset
+    const totalOffsetMilliseconds = (offsetHours * 60 + offsetMinutes) * 60 * 1000;
+    const localTime = new Date(currentTimeUTC.getTime() + totalOffsetMilliseconds);
+    return localTime;
+};
+
+// Store start times for uptime calculation
+let websiteUptimeStartTime;
+let apiServerUptimeStartTime;
+let testApiServerUptimeStartTime;
 
 // Export a function to start the status update process
 module.exports = function(client) {
@@ -35,7 +59,10 @@ module.exports = function(client) {
 
     // Define the function to send the status message
     const sendStatusMessage = async () => {
-        const currentTime = new Date().toLocaleString();
+        const currentTimeUTC = new Date();
+        const currentTime = currentTimeUTC.toLocaleString();
+        const localTime = getLocalTime();
+        const localTimeFormatted = `${localTime.getDate()}/${localTime.getMonth() + 1}/${String(localTime.getFullYear()).slice(-2)} ${String(localTime.getHours()).padStart(2, '0')}:${String(localTime.getMinutes()).padStart(2, '0')}:${String(localTime.getSeconds()).padStart(2, '0')}`;
 
         const websiteURL = 'https://wayonaaev.in'; // Change this to your website's URL
 
@@ -44,28 +71,73 @@ module.exports = function(client) {
 
         let websiteStatus;
         if (websiteOnline) {
-            websiteStatus = '✅ Website is running';
-            if (!uptimeStartTime) {
-                uptimeStartTime = new Date(); // Restart uptime tracking if website just came back up
+            if (!websiteUptimeStartTime) {
+                websiteUptimeStartTime = new Date(); // Start uptime tracking if website just came back up
             }
+            websiteStatus = '✅ Website is running';
         } else {
             websiteStatus = '❌ Website is offline';
-            uptimeStartTime = null; // Reset uptime start time if website is down
+            // Reset uptime start time if website is down
+            websiteUptimeStartTime = null;
         }
 
-        // Calculate uptime
-        const uptime = uptimeStartTime ? calculateUptime() : 'N/A';
+        // Calculate website uptime
+        const websiteUptime = calculateUptime(websiteUptimeStartTime);
+
+        const apiServerURL = 'http://125.22.173.98:3000';
+        let apiServerStatus;
+        try {
+            const apiServerOnline = await isApiServerOnline(apiServerURL);
+            if (apiServerOnline) {
+                if (!apiServerUptimeStartTime) {
+                    apiServerUptimeStartTime = new Date(); // Start uptime tracking if API server just came back up
+                }
+                apiServerStatus = '✅ API Server is running';
+            } else {
+                apiServerStatus = '❌ API Server is offline';
+                // Reset uptime start time if API server is down
+                apiServerUptimeStartTime = null;
+            }
+        } catch (error) {
+            console.error('Error checking API server status:', error);
+            apiServerStatus = '❌ API Server status check failed';
+        }
+
+        // Calculate API server uptime
+        const apiServerUptime = calculateUptime(apiServerUptimeStartTime);
+
+        const testApiServerURL = 'http://125.22.173.98:4000';
+        let testApiServerStatus;
+        try {
+            const testApiServerOnline = await isApiServerOnline(testApiServerURL);
+            if (testApiServerOnline) {
+                if (!testApiServerUptimeStartTime) {
+                    testApiServerUptimeStartTime = new Date(); // Start uptime tracking if TestAPI server just came back up
+                }
+                testApiServerStatus = '✅ TestAPI Server is running';
+            } else {
+                testApiServerStatus = '❌ TestAPI Server is offline';
+                // Reset uptime start time if TestAPI server is down
+                testApiServerUptimeStartTime = null;
+            }
+        } catch (error) {
+            console.error('Error checking TestAPI server status:', error);
+            testApiServerStatus = '❌ TestAPI Server status check failed';
+        }
+
+        // Calculate TestAPI server uptime
+        const testApiServerUptime = calculateUptime(testApiServerUptimeStartTime);
 
         // Create the formatted message
         const statusMessage = `
 **Anthem's Status Warrior**
 
 **Server Time \`\`${currentTime}\`\`**
+**Local Time \`\`${localTimeFormatted}\`\`**
 
-**${websiteStatus}** | \`\`${websiteURL}\`\` | Uptime : \`\`${uptime}\`\`
-**✅  Api Server is running** | \`\`wayonaaev.in\`\` | Uptime : \`\`20h 10m\`\`
-**✅  Test is running** | \`\`wayonaaev.in\`\` | Uptime : \`\`20h 10m\`\`
-✅  Server is online | \`\`125.22.173.98\`\`
+**${websiteStatus}** | \`\`${websiteURL}\`\`  | Uptime : \`\`${websiteUptime}\`\`
+**${apiServerStatus}** | \`\`${apiServerURL}\`\` | Uptime : \`\`${apiServerUptime}\`\`
+**${testApiServerStatus}** | \`\`${testApiServerURL}\`\` | Uptime : \`\`${testApiServerUptime}\`\`
 
 Server version - alpha_WayonaaHub | refreshed: \`\`10 second ago \`\`
 `;
@@ -88,9 +160,6 @@ Server version - alpha_WayonaaHub | refreshed: \`\`10 second ago \`\`
                 .catch(console.error);
         }
     };
-
-
-
 
     // Send the initial status message
     sendStatusMessage();
