@@ -45,6 +45,7 @@ const getLocalTime = () => {
     return localTime;
 };
 
+
 // Store start times for uptime calculation
 let websiteUptimeStartTime;
 let apiServerUptimeStartTime;
@@ -59,10 +60,12 @@ module.exports = function(client) {
 
     // Define the function to send the status message
     const sendStatusMessage = async () => {
+
         const currentTimeUTC = new Date();
-        const currentTime = currentTimeUTC.toLocaleString();
+        const serverTimeFormatted = `${currentTimeUTC.getDate()}/${currentTimeUTC.getMonth() + 1}/${String(currentTimeUTC.getFullYear()).slice(-2)}, ${String(currentTimeUTC.getHours()).padStart(2, '0')}:${String(currentTimeUTC.getMinutes()).padStart(2, '0')}:${String(currentTimeUTC.getSeconds()).padStart(2, '0')} UTC`;
         const localTime = getLocalTime();
-        const localTimeFormatted = `${localTime.getDate()}/${localTime.getMonth() + 1}/${String(localTime.getFullYear()).slice(-2)} ${String(localTime.getHours()).padStart(2, '0')}:${String(localTime.getMinutes()).padStart(2, '0')}:${String(localTime.getSeconds()).padStart(2, '0')}`;
+        const localTimeFormatted = `${localTime.getDate()}/${localTime.getMonth() + 1}/${String(localTime.getFullYear()).slice(-2)} ${String(localTime.getHours()).padStart(2, '0')}:${String(localTime.getMinutes()).padStart(2, '0')}:${String(localTime.getSeconds()).padStart(2, '0')} GMT+5:30`;
+
 
         const websiteURL = 'https://wayonaaev.in'; // Change this to your website's URL
 
@@ -132,14 +135,14 @@ module.exports = function(client) {
         const statusMessage = `
 **Anthem's Status Warrior**
 
-**Server Time \`\`${currentTime}\`\`**
+**Server Time \`\`${serverTimeFormatted}\`\`**
 **Local Time \`\`${localTimeFormatted}\`\`**
 
 **${websiteStatus}** | \`\`${websiteURL}\`\`  | Uptime : \`\`${websiteUptime}\`\`
 **${apiServerStatus}** | \`\`${apiServerURL}\`\` | Uptime : \`\`${apiServerUptime}\`\`
 **${testApiServerStatus}** | \`\`${testApiServerURL}\`\` | Uptime : \`\`${testApiServerUptime}\`\`
 
-Server version - alpha_WayonaaHub | refreshed: \`\`10 second ago \`\`
+**Server version** - alpha_WayonaaHub_2022datacenter
 `;
 
         // If there is a last message ID, update the existing message; otherwise, send a new message
