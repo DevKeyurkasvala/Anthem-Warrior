@@ -3,6 +3,7 @@ let lastMessageId = ''; // Replace 'YOUR_LAST_MESSAGE_ID' with your actual last 
 
 const https = require('https');
 const axios = require('axios');
+const Config = require('./config.json')
 
 const isApiServerOnline = async (url) => {
     try {
@@ -54,7 +55,12 @@ let testApiServerUptimeStartTime;
 // Export a function to start the status update process
 module.exports = function(client) {
     // Find the channel where you want to send the status update
-    const channel = client.channels.cache.get('1217529609474543676');
+    const channelId = Config.channelId;
+    const channel = client.channels.cache.get(channelId);
+
+    const websiteURL = Config.websiteURL;
+    const apiServerURL = Config.apiServerURL;
+    const testApiServerURL = Config.testApiServerURL;
 
     if (!channel) return console.log('Channel not found.');
 
@@ -66,8 +72,6 @@ module.exports = function(client) {
         const localTime = getLocalTime();
         const localTimeFormatted = `${localTime.getDate()}/${localTime.getMonth() + 1}/${String(localTime.getFullYear()).slice(-2)} ${String(localTime.getHours()).padStart(2, '0')}:${String(localTime.getMinutes()).padStart(2, '0')}:${String(localTime.getSeconds()).padStart(2, '0')} GMT+5:30`;
 
-
-        const websiteURL = 'https://wayonaaev.in'; // Change this to your website's URL
 
         // Check if the website is online
         const websiteOnline = await isWebsiteOnline(websiteURL);    
@@ -87,7 +91,6 @@ module.exports = function(client) {
         // Calculate website uptime
         const websiteUptime = calculateUptime(websiteUptimeStartTime);
 
-        const apiServerURL = 'http://125.22.173.98:3000';
         let apiServerStatus;
         try {
             const apiServerOnline = await isApiServerOnline(apiServerURL);
@@ -109,7 +112,6 @@ module.exports = function(client) {
         // Calculate API server uptime
         const apiServerUptime = calculateUptime(apiServerUptimeStartTime);
 
-        const testApiServerURL = 'http://125.22.173.98:4000';
         let testApiServerStatus;
         try {
             const testApiServerOnline = await isApiServerOnline(testApiServerURL);
